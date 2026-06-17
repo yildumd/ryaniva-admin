@@ -1,4 +1,5 @@
 'use client';
+import LiveMap from '@/components/LiveMap';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, setAuthToken } from '@/lib/api';
@@ -29,6 +30,7 @@ const statusColors: Record<string, string> = {
 
 const navItems = [
   { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'livemap', label: 'Live Map', icon: MapPin },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'riders', label: 'Riders', icon: Bike },
   { id: 'customers', label: 'Customers', icon: Users },
@@ -966,6 +968,51 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+{/* ── LIVE MAP ── */}
+              {activeTab === 'livemap' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: 'Online Riders', value: riders.filter(r => r.isOnline).length, color: '#10B981' },
+                      { label: 'Offline Riders', value: riders.filter(r => !r.isOnline).length, color: '#9CA3AF' },
+                      { label: 'Active Orders', value: analytics?.orders.active || 0, color: ORANGE },
+                    ].map((s, i) => (
+                      <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                        <div>
+                          <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
+                          <div className="text-gray-500 text-xs">{s.label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-gray-700">Live Rider Map — Jos, Plateau State</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Click on a rider marker to see details</p>
+                      </div>
+                      <button onClick={loadAll}
+                        className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">
+                        <RefreshCw size={13} /> Refresh
+                      </button>
+                    </div>
+                    <div style={{ height: '500px' }}>
+                      <LiveMap riders={riders.map(r => ({
+                        id: r.id,
+                        name: r.user.name,
+                        phone: r.user.phone,
+                        vehicle: r.vehicle,
+                        isOnline: r.isOnline,
+                        status: r.status,
+                        rating: r.rating,
+                      }))} />
                     </div>
                   </div>
                 </div>

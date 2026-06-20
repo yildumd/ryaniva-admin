@@ -13,7 +13,7 @@ import {
   CheckCircle, Clock, MapPin, Phone, Star,
   ChevronRight, Menu, LayoutDashboard, ShoppingBag,
   Wallet, Settings, Headphones, BarChart2, CreditCard,
-  Download, Search, ArrowUpRight, AlertCircle, FileText
+  Download, Search, ArrowUpRight, AlertCircle, FileText, Maximize2
 } from 'lucide-react';
 
 const BLUE = '#1A3A8F';
@@ -88,7 +88,6 @@ export default function DashboardPage() {
   const [orderFilter, setOrderFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Date range states
   const [earningsFrom, setEarningsFrom] = useState('');
   const [earningsTo, setEarningsTo] = useState('');
   const [reportsFrom, setReportsFrom] = useState('');
@@ -96,7 +95,6 @@ export default function DashboardPage() {
   const [paymentsFrom, setPaymentsFrom] = useState('');
   const [paymentsTo, setPaymentsTo] = useState('');
 
-  // Payment tab state
   const [paymentTab, setPaymentTab] = useState<'all' | 'cod' | 'card' | 'disputes' | 'failed'>('all');
 
   useEffect(() => {
@@ -190,9 +188,11 @@ export default function DashboardPage() {
     return true;
   });
 
+  // ── Business model: ALL delivery revenue goes to Ryaniva.
+  // Riders are paid a fixed salary (handled outside the app) plus
+  // performance bonuses and customer tips (tracked via Reviews).
   const earningsTotal = earningsOrders.reduce((sum, o) => sum + o.price, 0);
-  const earningsPlatform = Math.round(earningsTotal * 0.1);
-  const earningsRider = earningsTotal - earningsPlatform;
+  const totalTips = riders.reduce((sum, r: any) => sum + (r.totalTips || 0), 0);
 
   const pieData = analytics ? [
     { name: 'Delivered', value: analytics.orders.completed, color: '#10B981' },
@@ -219,6 +219,8 @@ export default function DashboardPage() {
   ];
 
   const inputClass = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 placeholder-gray-400";
+
+  const onlineCount = riders.filter(r => r.isOnline).length;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -318,7 +320,7 @@ export default function DashboardPage() {
                       { label: 'Total Orders', value: analytics.orders.total, icon: Package, color: BLUE, sub: 'All time' },
                       { label: 'Delivered', value: analytics.orders.completed, icon: CheckCircle, color: '#10B981', sub: `${analytics.orders.total > 0 ? Math.round((analytics.orders.completed / analytics.orders.total) * 100) : 0}% completion rate` },
                       { label: 'Active Orders', value: analytics.orders.active, icon: Clock, color: ORANGE, sub: 'In progress' },
-                      { label: 'Platform Earnings', value: `₦${platformEarnings.toLocaleString()}`, icon: TrendingUp, color: BLUE, sub: `Total value: ₦${totalRevenue.toLocaleString()}` },
+                      { label: 'Total Revenue', value: `₦${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: BLUE, sub: '100% to Ryaniva' },
                     ].map((stat, i) => (
                       <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-3">
@@ -371,7 +373,32 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* Mini Live Map + Recent Orders */}
                   <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="p-4 border-b flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                          <h3 className="font-semibold text-gray-700 text-sm">Live Riders ({onlineCount} online)</h3>
+                        </div>
+                        <button onClick={() => setActiveTab('livemap')}
+                          className="text-xs flex items-center gap-1 font-medium" style={{ color: BLUE }}>
+                          <Maximize2 size={11} /> Expand
+                        </button>
+                      </div>
+                      <div style={{ height: '220px' }}>
+                        <LiveMap riders={riders.map(r => ({
+                          id: r.id,
+                          name: r.user.name,
+                          phone: r.user.phone,
+                          vehicle: r.vehicle,
+                          isOnline: r.isOnline,
+                          status: r.status,
+                          rating: r.rating,
+                        }))} />
+                      </div>
+                    </div>
+
                     <div className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
                       <div className="p-4 border-b flex items-center justify-between">
                         <h3 className="font-semibold text-gray-700">Recent Orders</h3>
@@ -380,7 +407,7 @@ export default function DashboardPage() {
                           View all <ChevronRight size={12} />
                         </button>
                       </div>
-                      <div className="divide-y">
+                      <div className="divide-y" style={{ maxHeight: '220px', overflowY: 'auto' }}>
                         {orders.slice(0, 5).map(order => (
                           <div key={order.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
                             <div className="flex items-center gap-3">
@@ -407,7 +434,9 @@ export default function DashboardPage() {
                         {orders.length === 0 && <div className="p-8 text-center text-gray-400 text-sm">No orders yet</div>}
                       </div>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
                       <div className="p-4 border-b flex items-center justify-between">
                         <h3 className="font-semibold text-gray-700">Top Riders</h3>
@@ -440,13 +469,10 @@ export default function DashboardPage() {
                         ))}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-4">
                     {[
                       { label: 'Total Customers', value: analytics.users.customers, icon: Users, color: '#8B5CF6' },
                       { label: 'Active Riders', value: analytics.users.approvedRiders, icon: Bike, color: BLUE },
-                      { label: 'Pending Approval', value: analytics.users.pendingRiders, icon: Clock, color: ORANGE },
                     ].map((stat, i) => (
                       <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
                         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -595,6 +621,16 @@ export default function DashboardPage() {
                                 <span className="flex items-center gap-1"><Bike size={12} /> {rider.vehicle}</span>
                                 <span className="flex items-center gap-1"><Star size={12} className="text-yellow-400" fill="currentColor" /> {rider.rating}</span>
                                 <span className="flex items-center gap-1"><Package size={12} /> {rider.totalTrips} trips</span>
+                                {(rider as any).totalTips > 0 && (
+                                  <span className="flex items-center gap-1 text-green-600 font-medium">
+                                    💰 ₦{(rider as any).totalTips.toLocaleString()} tips
+                                  </span>
+                                )}
+                                {(rider as any).bonusEligible && (
+                                  <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold">
+                                    🏆 BONUS ELIGIBLE
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -637,6 +673,14 @@ export default function DashboardPage() {
               {/* ── EARNINGS ── */}
               {activeTab === 'earnings' && analytics && (
                 <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-blue-700">
+                      All delivery revenue belongs to Ryaniva. Riders are paid a fixed monthly salary
+                      (managed outside the app) plus performance bonuses and customer tips shown below.
+                    </p>
+                  </div>
+
                   <DateRangePicker
                     fromDate={earningsFrom} toDate={earningsTo}
                     onFromChange={setEarningsFrom} onToChange={setEarningsTo}
@@ -645,18 +689,13 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-3 gap-4">
                     {[
-                      { label: earningsFrom || earningsTo ? 'Filtered Delivery Value' : 'Total Delivery Value', value: `₦${earningsTotal.toLocaleString()}`, color: BLUE },
-                      { label: 'Platform Earnings (10%)', value: `₦${earningsPlatform.toLocaleString()}`, color: '#10B981' },
-                      { label: 'Rider Payouts (90%)', value: `₦${earningsRider.toLocaleString()}`, color: ORANGE },
+                      { label: earningsFrom || earningsTo ? 'Filtered Revenue' : 'Total Revenue (Ryaniva)', value: `₦${earningsTotal.toLocaleString()}`, color: BLUE },
+                      { label: 'Completed Deliveries', value: earningsOrders.length, color: '#10B981' },
+                      { label: 'Total Rider Tips', value: `₦${totalTips.toLocaleString()}`, color: ORANGE },
                     ].map((s, i) => (
                       <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                         <div className="text-2xl font-bold mb-1" style={{ color: s.color }}>{s.value}</div>
                         <div className="text-gray-500 text-sm">{s.label}</div>
-                        {(earningsFrom || earningsTo) && i === 0 && (
-                          <div className="text-xs text-blue-500 mt-1">
-                            {earningsOrders.length} completed orders in range
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -667,9 +706,7 @@ export default function DashboardPage() {
                       <button onClick={() => exportToCSV(earningsOrders.map(o => ({
                         ID: o.id.substring(0, 8).toUpperCase(),
                         Customer: o.customer?.name || '',
-                        Amount: o.price,
-                        Platform: Math.round(o.price * 0.1),
-                        Rider: Math.round(o.price * 0.9),
+                        Amount_NGN: o.price,
                         Date: new Date(o.createdAt).toLocaleDateString(),
                       })), 'ryaniva-earnings')}
                         className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -700,9 +737,7 @@ export default function DashboardPage() {
                             <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                               <th className="px-4 py-3 text-left">Order ID</th>
                               <th className="px-4 py-3 text-left">Customer</th>
-                              <th className="px-4 py-3 text-left">Total</th>
-                              <th className="px-4 py-3 text-left">Platform (10%)</th>
-                              <th className="px-4 py-3 text-left">Rider (90%)</th>
+                              <th className="px-4 py-3 text-left">Amount</th>
                               <th className="px-4 py-3 text-left">Date</th>
                             </tr>
                           </thead>
@@ -713,9 +748,7 @@ export default function DashboardPage() {
                                   #{order.id.substring(0, 8).toUpperCase()}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-600">{order.customer?.name}</td>
-                                <td className="px-4 py-3 font-bold text-sm" style={{ color: DARK_BLUE }}>₦{order.price.toLocaleString()}</td>
-                                <td className="px-4 py-3 font-semibold text-sm text-green-600">₦{Math.round(order.price * 0.1).toLocaleString()}</td>
-                                <td className="px-4 py-3 font-semibold text-sm" style={{ color: ORANGE }}>₦{Math.round(order.price * 0.9).toLocaleString()}</td>
+                                <td className="px-4 py-3 font-bold text-sm" style={{ color: BLUE }}>₦{order.price.toLocaleString()}</td>
                                 <td className="px-4 py-3 text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
                               </tr>
                             ))}
@@ -740,7 +773,7 @@ export default function DashboardPage() {
                     {[
                       { label: 'Total Transactions', value: paymentsOrders.length, color: BLUE },
                       { label: 'Cash (COD)', value: paymentsOrders.filter(o => o.paymentMethod === 'CASH').length, color: '#10B981' },
-                      { label: 'Card (Flutterwave)', value: paymentsOrders.filter(o => o.paymentMethod === 'CARD').length, color: ORANGE },
+                      { label: 'Card / Transfer', value: paymentsOrders.filter(o => o.paymentMethod === 'CARD').length, color: ORANGE },
                       { label: 'Failed / Disputes', value: paymentsOrders.filter(o => o.paymentStatus === 'FAILED').length, color: '#EF4444' },
                     ].map((s, i) => (
                       <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -750,13 +783,12 @@ export default function DashboardPage() {
                     ))}
                   </div>
 
-                  {/* Payment sub-tabs */}
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="border-b flex">
                       {[
                         { id: 'all', label: 'All Transactions' },
                         { id: 'cod', label: 'COD Reconciliation' },
-                        { id: 'card', label: 'Card Payments' },
+                        { id: 'card', label: 'Card / Transfer (Flutterwave)' },
                         { id: 'disputes', label: 'Disputes' },
                         { id: 'failed', label: 'Failed' },
                       ].map(tab => (
@@ -830,7 +862,7 @@ export default function DashboardPage() {
                               <td className="px-4 py-3">
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                   order.paymentMethod === 'CARD' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                                }`}>{order.paymentMethod === 'CARD' ? '💳 Card' : '💵 Cash'}</span>
+                                }`}>{order.paymentMethod === 'CARD' ? '💳 Card/Transfer' : '💵 Cash'}</span>
                               </td>
                               <td className="px-4 py-3 font-bold text-sm" style={{ color: ORANGE }}>
                                 ₦{order.price.toLocaleString()}
@@ -898,36 +930,36 @@ export default function DashboardPage() {
                           filename: 'ryaniva-orders-report',
                         },
                         {
-                          title: 'Revenue Report', desc: 'Platform earnings, delivery values, rider payouts',
+                          title: 'Revenue Report', desc: 'Total Ryaniva revenue from completed deliveries',
                           icon: TrendingUp,
                           data: () => filterByDateRange(orders.filter(o => o.status === 'DELIVERED'), reportsFrom, reportsTo).map(o => ({
                             ID: o.id.substring(0, 8).toUpperCase(),
                             Customer: o.customer?.name || '',
-                            Total_NGN: o.price,
-                            Platform_10pct: Math.round(o.price * 0.1),
-                            Rider_90pct: Math.round(o.price * 0.9),
+                            Amount_NGN: o.price,
                             Payment: o.paymentMethod,
                             Date: new Date(o.createdAt).toLocaleDateString(),
                           })),
                           filename: 'ryaniva-revenue-report',
                         },
                         {
-                          title: 'Riders Report', desc: 'Rider performance, ratings, trip counts, status',
+                          title: 'Riders Report', desc: 'Rider performance, ratings, tips, bonus eligibility',
                           icon: Bike,
-                          data: () => riders.map(r => ({
+                          data: () => riders.map((r: any) => ({
                             Name: r.user.name,
                             Phone: r.user.phone,
                             Vehicle: r.vehicle,
                             Status: r.status,
                             Rating: r.rating,
                             Total_Trips: r.totalTrips,
+                            Total_Tips_NGN: r.totalTips || 0,
+                            Bonus_Eligible: r.bonusEligible ? 'Yes' : 'No',
                             Online: r.isOnline ? 'Yes' : 'No',
                             Joined: r.user.createdAt ? new Date(r.user.createdAt).toLocaleDateString() : '',
                           })),
                           filename: 'ryaniva-riders-report',
                         },
                         {
-                          title: 'Payments Report', desc: 'All transactions, COD, card payments, failed',
+                          title: 'Payments Report', desc: 'All transactions, COD, card/transfer, failed',
                           icon: CreditCard,
                           data: () => filterByDateRange(orders, reportsFrom, reportsTo).map(o => ({
                             ID: o.id.substring(0, 8).toUpperCase(),
@@ -972,8 +1004,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
-              
-{/* ── LIVE MAP ── */}
+
+              {/* ── LIVE MAP ── */}
               {activeTab === 'livemap' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
@@ -1034,12 +1066,12 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                     <h3 className="font-semibold text-gray-700 mb-1">Delivery Pricing</h3>
-                    <p className="text-gray-400 text-sm mb-4">Configure base pricing for all deliveries</p>
+                    <p className="text-gray-400 text-sm mb-4">Configure base pricing customers pay for deliveries</p>
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { label: 'Base Fare (₦)', value: '500', desc: 'Starting price for every delivery' },
                         { label: 'Per Kilometer (₦)', value: '80', desc: 'Cost per km of distance' },
-                        { label: 'Platform Commission (%)', value: '10', desc: 'Ryaniva platform fee per order' },
+                        { label: 'Service Charge (%)', value: '10', desc: 'Added margin on top of base + distance fare' },
                         { label: 'Minimum Order (₦)', value: '500', desc: 'Minimum delivery charge' },
                       ].map((s, i) => (
                         <div key={i} className="border border-gray-200 rounded-xl p-4">

@@ -136,6 +136,11 @@ const [analyticsRes, ordersRes, ridersRes, customersRes] = await Promise.all([
     await api.patch(`/admin/riders/${riderId}/suspend`);
     loadAll();
   };
+  const deleteRider = async (riderId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this rider? This cannot be undone.')) return;
+    await api.delete(`/admin/riders/${riderId}`);
+    loadAll();
+  };
 
   const logout = () => { localStorage.clear(); router.push('/login'); };
 
@@ -658,6 +663,10 @@ const [analyticsRes, ordersRes, ridersRes, customersRes] = await Promise.all([
                                   Suspend
                                 </button>
                               )}
+                              <button onClick={() => deleteRider(rider.id)}
+                                className="px-4 py-1.5 rounded-lg text-white text-xs font-semibold bg-gray-800 hover:bg-gray-900">
+                                Delete
+                              </button>
                             </div>
                           </div>
                         </div>

@@ -96,6 +96,8 @@ export default function DashboardPage() {
   const [paymentsTo, setPaymentsTo] = useState('');
 
   const [paymentTab, setPaymentTab] = useState<'all' | 'cod' | 'card' | 'disputes' | 'failed'>('all');
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('ryaniva_token');
@@ -109,15 +111,16 @@ export default function DashboardPage() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [analyticsRes, ordersRes, ridersRes] = await Promise.all([
+const [analyticsRes, ordersRes, ridersRes, customersRes] = await Promise.all([
         api.get('/admin/analytics'),
         api.get('/admin/orders'),
         api.get('/admin/riders'),
+        api.get('/admin/customers'),
       ]);
       setAnalytics(analyticsRes.data);
       setOrders(ordersRes.data);
       setRiders(ridersRes.data);
-    } catch (err) {
+      setCustomers(customersRes.data);    } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
@@ -1069,8 +1072,8 @@ export default function DashboardPage() {
                     <p className="text-gray-400 text-sm mb-4">Configure base pricing customers pay for deliveries</p>
                     <div className="grid grid-cols-2 gap-4">
                       {[
-                        { label: 'Base Fare (₦)', value: '500', desc: 'Starting price for every delivery' },
-                        { label: 'Per Kilometer (₦)', value: '80', desc: 'Cost per km of distance' },
+                        { label: 'Base Fare (₦)', value: '800', desc: 'Starting price for every delivery' },
+                        { label: 'Per Kilometer (₦)', value: '150', desc: 'Cost per km of distance' },
                         { label: 'Service Charge (%)', value: '10', desc: 'Added margin on top of base + distance fare' },
                         { label: 'Minimum Order (₦)', value: '500', desc: 'Minimum delivery charge' },
                       ].map((s, i) => (
@@ -1113,12 +1116,66 @@ export default function DashboardPage() {
               {/* ── CUSTOMERS ── */}
               {activeTab === 'customers' && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                  <div className="p-5 border-b">
-                    <h3 className="font-semibold text-gray-700">Customers ({analytics?.users.customers || 0})</h3>
+                  <div className="p-5 border-b flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-700">Customers ({customers.length})</h3>
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={customerSearch}
+                        onChange={e => setCustomerSearch(e.target.value)}
+                        placeholder="Search customers..."
+                        className="pl-8 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <div className="p-12 text-center">
-                    <Users size={48} className="mx-auto mb-3 opacity-10" style={{ color: BLUE }} />
-                    <p className="text-gray-400 text-sm">Full customer management coming in next update</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-gray-500 font-medium">#</th>
+                          <th className="px-4 py-3 text-left text-gray-500 font-medium">Name</th>
+                          <th className="px-4 py-3 text-left text-gray-500 font-medium">Phone</th>
+                          <th className="px-4 py-3 text-left text-gray-500 font-medium">Orders</th>
+                          <th className="px-4 py-3 text-left text-gray-500 font-medium">Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {customers
+                          .filter(c =>
+                            c.name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                            c.phone?.includes(customerSearch)
+                          )
+                          .map((c, i) => (
+                          <tr key={c.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-400">{i + 1}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                  style={{ background: BLUE }}>
+                                  {c.name?.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-medium text-gray-800">{c.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-gray-600 hover:text-blue-600">
+                                <Phone size={12} />
+                                {c.phone}
+                              </a>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 rounded-full text-xs font-medium"
+                                style={{ background: `${BLUE}15`, color: BLUE }}>
+                                {c.customerOrders?.length || 0} orders
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-400 text-xs">
+                              {new Date(c.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}

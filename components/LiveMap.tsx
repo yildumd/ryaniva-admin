@@ -18,7 +18,7 @@ interface LiveMapProps {
   riders: RiderPin[];
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCI8Y_XNplWLmrhYcmyZTj3hQy0dKIYgSM';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBR9P-yE74ioguhhBXMw4LE8gOMA6E_ANw';
 const JOS_CENTER = { lat: 9.8965, lng: 8.8583 };
 
 const JOS_LANDMARKS = [
